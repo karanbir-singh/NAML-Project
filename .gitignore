@@ -4,3 +4,4 @@
 .env
 .DS_Store
 /mlruns
+creditcard_2021.csv
