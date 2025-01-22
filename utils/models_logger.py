@@ -130,16 +130,16 @@ def log_fraud_model(experiment_name, model_name, y_true, y_pred, y_pred_proba = 
             
             #Do not log the confusion matrix image to the server
 
-def get_experiment_results(experiment_name, push_to_server=False):
+def get_experiment_results(experiment_name, look_to_server=False):
     """
     Retrieves experiment results from MLflow.
 
     Args:
         experiment_name: Name of the experiment.
-        push_to_server: If True, retrieves results from the remote server. Otherwise, retrieves from local logs.
+        look__to_server: If True, retrieves results from the remote server. Otherwise, retrieves from local logs.
     """
 
-    setup_tracking(experiment_name, push_to_server)
+    setup_tracking(experiment_name, look_to_server)
     experiment = mlflow.get_experiment_by_name(experiment_name)
     runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id])
     
