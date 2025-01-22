@@ -1,0 +1,100 @@
+------------------------------ CONFIGURATION (ALREADY DONE BY ME, I KEEP IT FOR REFERENCE) -------------------------------
+
+Open a new terminal and run as ADMIN the following command:
+mlflow server --backend-store-uri mysql+pymysql://sql7759036:a7VG3KkAV8@sql7.freesqldatabase.com:3306/sql7759036 \
+              --default-artifact-root ./mlruns \
+              --host 0.0.0.0 \
+              --port 5000
+
+--------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------- 0. CREATE A VIRTUAL ENV AND INSTALL REQUIRED PACKAGES ---------------------------------
+
+#Once you have created, opened and activated the venv, run the following to install 
+pip install -r requirements.txt
+
+--------------------------------------------------------------------------------------------------------------------------
+
+
+----------------------------------------------- 1. TEST CONNECTION WITH MYSQL DB -----------------------------------------
+
+import mysql.connector
+
+#DB details
+config = {
+    'user': 'sql7759036',
+    'password': 'a7VG3KkAV8',
+    'host': 'sql7.freesqldatabase.com',
+    'database': 'sql7759036',
+    'port': 3306,
+}
+
+try:
+    conn = mysql.connector.connect(**config)
+    print("Connection ok!")
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1;")
+    print("Query ok!")
+except Exception as e:
+    print("Error:", e)
+finally:
+    conn.close()
+
+-------------------------------------------------------------------------------------------------------------------------
+
+
+--------------------------------------- 2. FOR EVERY MODEL NOTEBOOK IMPORT THE LIBRARY ----------------------------------
+
+import sys
+sys.path.append('..')
+from utils.models_logger import *
+
+-------------------------------------------------------------------------------------------------------------------------
+
+
+-------------------------------------- 3. SYNC YOUR LOCAL MLFLOW LOG WITH THE SERVER ------------------------------------
+
+sync_remote_to_local("fraud_detection_project")
+
+-------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------- 4. ONCE MODEL IS COMPLETED YOU CAN LOG IT LOCALLY OR ON CLOUD ------------------------------
+
+#After running this command, you'll see a new sub-folder in "mlruns" folder
+log_fraud_model(
+    experiment_name = "fraud_detection_project",
+    model_name = ...,
+    y_true = ...,
+    y_pred = ...,
+    y_pred_proba = ...,
+    note = "My note",
+    additional_params = {
+        #Additional params
+    },
+    push_to_server = True / False #If True, results will be saved locally and remotely. Otherwise, only locally. 
+)
+
+-------------------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------- 5. GET THE SAVED LOGS (LOCALLY) ---------------------------------------------
+
+experiment = mlflow.get_experiment_by_name("fraud_detection_project") #A Pandas DF will be returned. 
+
+#Use the name to locate the row, the find the ID that is the name assigned by Mlflow to the folder containg the info.
+run_id = results["run_id"].iloc[0]
+
+#Confusion matrix is inside the folder and it's already a PIL image
+im = mlflow.artifacts.load_image(f"runs:/{run_id}/confusion_matrix_{model_nane}.png")
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------- 6. USE MLFLOW UI ----------------------------------------------------------	
+
+#If you want to compare performances of multiple models graphically, you an use mlflow ui.
+#Enter the /mlrun folder and type in the terminal "mlflow ui" (venv must be active).
+
+------------------------------------------------------------------------------------------------------------------------
