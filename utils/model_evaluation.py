@@ -49,9 +49,10 @@ def compute_metrics(y_pred, y_true):
     
     metrics["total_transactions"] = len(y_true),
     metrics["fraud_transactions"] = sum(y_true),
-    metrics["detected_frauds"] = tp,
-    metrics["missed_frauds"] = fn,
-    metrics["false_alarms"] = fp
+    metrics["tp"] = tp,
+    metrics["fn"] = fn,
+    metrics["fp"] = fp,
+    metrics["tn"] = tn
 
     return metrics
 
@@ -61,5 +62,6 @@ feature_vectors = {
     "v3" : ["V2", "V11", "V12", "V13", "V15", "V16", "V17", "V18", "V20", "V21", "V24", "V26", "Amount"],
     "v4" : ["V2", "V7", "V10", "V13", "V15", "V17", "V19", "V28", "V17", "Amount"],
     "v5" : ["Time", "V1", "V7", "V8", "V9", "V11", "V12", "V14", "V15", "V22", "V27", "V28", "Amount"],
-    "all" : ["Time", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20", "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28", "Amount"]
+    "v6" : ["Time", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20", "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28", "Amount"],
+    "v7" : ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20", "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28", "Amount"]
 }
