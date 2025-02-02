@@ -2,25 +2,15 @@ import numpy as np
 from utils.models.base_model import BaseModel
 
 class Node:
-    """
-        This class represents a node in the decision tree.
-        Attributes:
-            feature: the feature that the node is splitting on.
-            threshold: the threshold that the node is splitting on.
-            left: the left child of the node.
-            right: the right child of the node.
-            value: the value of the node if it is a leaf node.
-    """
-
-    def __init__(self, feature = None, threshold = None, left = None, right = None, value = None):
+    def __init__(self, feature = None, threshold = None, left = None, right = None, value = None, class_prob = None):
         """
             Initializes the node.
             Args:
-                feature: the feature that the node is splitting on.
-                threshold: the threshold that the node is splitting on.
-                left: the left child of the node.
-                right: the right child of the node.
-                value: the value of the node if it is a leaf node.
+                feature (int): the feature that the node is splitting on.
+                threshold (float): the threshold that the node is splitting on.
+                left (Node): the left child of the node.
+                right (Node): the right child of the node.
+                value (float): the value of the node if it is a leaf node.
         """
         
         self.feature = feature
@@ -32,6 +22,8 @@ class Node:
 
         self.value = value
 
+        self.class_prob = class_prob
+
 class DecisionTree(BaseModel):
     def __init__(self, 
                  criterion = "gini", 
@@ -42,7 +34,6 @@ class DecisionTree(BaseModel):
                  max_thresholds = 1,
                  max_features = None,
                  random_state = 0):
-        
         """
             Initialize the decision tree parameters.
             
@@ -62,8 +53,6 @@ class DecisionTree(BaseModel):
                 random_state (int): random seed.
         """
 
-        super().__init__()
-
         self.criterion = criterion
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
@@ -72,6 +61,10 @@ class DecisionTree(BaseModel):
         self.max_thresholds = max_thresholds
         self.max_features = max_features
         self.random_state = random_state
+
+        #This attribute is not defined in the constructore because it's known only when y data is passed (self.fit(...))
+        #It will be used to make the length of the arrays of probabilities all equal to num_classes
+        self.num_classes = None
 
         self.tree = None
 
@@ -260,14 +253,16 @@ class DecisionTree(BaseModel):
         #3. If the number of samples is less than the minimum number of samples required to split
         #If at least one condition is True, return a leaf node with the most common label
         if (depth >= self.max_depth or n_labels == 1 or n_samples < self.min_samples_split):
-            return Node(value = np.bincount(y).argmax())
+            class_counts = np.bincount(y, minlength = self.num_classes)
+            return Node(value = np.bincount(y).argmax(), class_prob = class_counts / np.sum(class_counts))
 
         #Find the best split (i.e., the best feature and threshold to split on)
         feature_idx, threshold, best_gain = self.find_best_split(X, y)
         
         #If the best split is invalid (i.e., feature_idx is None or best_gain is less than the minimum impurity decrease), return a leaf node with the most common label.
         if feature_idx is None or best_gain < self.min_impurity_decrease:
-            return Node(value = np.bincount(y).argmax())
+            class_counts = np.bincount(y, minlength = self.num_classes)
+            return Node(value = np.bincount(y).argmax(), class_prob = class_counts / np.sum(class_counts))
 
         #Split the dataset based on the best feature and threshold
         X_left, X_right, y_left, y_right = self.split_samples(X, y, feature_idx, threshold)
@@ -279,10 +274,10 @@ class DecisionTree(BaseModel):
 
         #At this point we have built the left and right children of the current node.
         #If both children are leaves and they have same most common label, consider deleting the leafs and assigning the parent node the most common label making it a leaf node
-        if left_child.value is not None and right_child.value is not None and left_child.value == right_child.value:
-            return Node(value = left_child.value)
-        else:
-            return Node(feature = feature_idx, threshold = threshold, left = left_child, right = right_child)
+        #if left_child.value is not None and right_child.value is not None and left_child.value == right_child.value:
+        #    return Node(value = left_child.value)
+        #else:
+        return Node(feature = feature_idx, threshold = threshold, left = left_child, right = right_child, class_prob = None)
 
     def fit(self, X, y):
         """
@@ -294,6 +289,7 @@ class DecisionTree(BaseModel):
                 y (np.ndarray): the target variable.
         """
 
+        self.num_classes = len(np.unique(y))
         self.tree = self.build_tree(X, y)
 
     def traverse_tree(self, x, node):
@@ -310,7 +306,7 @@ class DecisionTree(BaseModel):
 
         #If the node is a leaf node, return the value of the node
         if node.value is not None:
-            return node.value
+            return node
 
         #If the feature value of the sample x is less than or equal to the threshold of the node, go to the left child, otherwise go to the right child
         if x[node.feature] <= node.threshold:
@@ -329,8 +325,11 @@ class DecisionTree(BaseModel):
                 predictions (np.ndarray): the predicted classes.
         """
 
+        #Get the leaf the ample belongs to
+        leafs = [self.traverse_tree(x, self.tree) for x in X]
+
         #For each sample in X, we traverse the tree to make a prediction
-        return np.array([self.traverse_tree(x, self.tree) for x in X])
+        return np.array([l.value for l in leafs]), np.array([l.class_prob for l in leafs])
 
     def compute_feature_importance(self, X, y):
         """
