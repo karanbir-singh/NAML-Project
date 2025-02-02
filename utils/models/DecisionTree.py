@@ -1,4 +1,5 @@
 import numpy as np
+from utils.models.base_model import BaseModel
 
 class Node:
     """
@@ -31,7 +32,7 @@ class Node:
 
         self.value = value
 
-class DecisionTree:
+class DecisionTree(BaseModel):
     def __init__(self, 
                  criterion = "gini", 
                  max_depth = None, 
@@ -60,6 +61,8 @@ class DecisionTree:
                                                 - if None, all features
                 random_state (int): random seed.
         """
+
+        super().__init__()
 
         self.criterion = criterion
         self.max_depth = max_depth

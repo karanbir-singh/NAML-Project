@@ -5,7 +5,9 @@ import sys
 sys.path.append("..")
 from utils.models.DecisionTree import DecisionTree
 
-class RandomForest:
+from utils.models.base_model import BaseModel
+
+class RandomForest(BaseModel):
     def __init__(self, 
                  n_trees = 10,
                  criterion = "gini", 
@@ -38,6 +40,8 @@ class RandomForest:
                                                     - if None, all features
                     random_state (int): random seed.
         """
+
+        super().__init__()
         
         self.n_trees = n_trees
 
@@ -83,7 +87,6 @@ class RandomForest:
 
             Returns:
                 labels (np.ndarray): the predicted label of each sample in X
-                scores (np.ndarray): the score associated to each prediction
         """
 
         #As define in the theory part, we collect the prediction of each tree.
@@ -92,9 +95,10 @@ class RandomForest:
         predictions = np.array([t.predict(X) for t in self.trees])  
         
         #scipy.stats.mode (axis = 0) collets all the modes or "modal" (most common values) along with their frequencies
-        labels, counts = scipy.stats.mode(predictions, axis = 0)
+        labels, _ = scipy.stats.mode(predictions, axis = 0)
 
-        #Finally, we normalize the frequencies so that tey are in [0,1]
-        scores = counts / predictions.shape[0]
+        #Note: this operation is done in the RF notebook. Here, to make predict(...) compatible with all the other classes 
+        #in which it returns only the labels, it has been commented out and "scores" is not returned.
+        #scores = counts / predictions.shape[0]
 
-        return labels, scores
+        return labels

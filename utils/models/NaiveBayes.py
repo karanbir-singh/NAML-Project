@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from utils.models.base_model import BaseModel
 
-class GaussianNaiveBayes:
+class GaussianNaiveBayes(BaseModel):
     def __init__(self, classes):
         """
             Initializes the Naive Bayes classifer parameters.
@@ -40,6 +41,8 @@ class GaussianNaiveBayes:
         #Compute and store mean and variance for each feature per class (see theory part)
         self.means = {}
         self.variances = {}
+
+        max_var = np.var(X, axis = 0).max()
         
         for c in self.classes:
             X_c = X[y == c]
@@ -48,8 +51,9 @@ class GaussianNaiveBayes:
             #Note: here we could have used the NumPy built-in command for the variance estimation
             #np.var(X_c, axis = 0, ddof = 1) where ddof = 1 means that at the denominator we want a -1
             #to get an unbiased estimator
-            self.variances[c] = np.sum((X_c - self.means[c]) ** 2, axis = 0) / (len(X_c) - 1)
-    
+            #Note: 1e-9 * max_var is a smothing paramter useful when variances have different scales (like Time and the Vs)
+            self.variances[c] = np.sum((X_c - self.means[c]) ** 2, axis = 0) / (len(X_c) - 1) + 1e-9 * max_var
+
     def predict(self, X):
         """
             This method makes prediction on new data.
@@ -58,7 +62,8 @@ class GaussianNaiveBayes:
                 X (np.ndarray): the matrix containg the samples to predict (on the rows).
 
             Returns:
-                predictions (np.ndarray): the array containing the predicted class
+                predictions (np.ndarray): the array containing the predicted class.
+                probabilties (np.ndarray): the probability associated to the prediction
         """
 
         if self.means == None or self.variances == None:
@@ -88,10 +93,19 @@ class GaussianNaiveBayes:
         #In the same way as before, this operation is done column by column (axis = 1)
         #Note: keepdims = True is required becuse otherwise np.sum() would produce a row vector and 
         #the division of a column vector with a row vectors gives a matrix because of brodcasting
-        probs = np.exp(posteriors) / np.sum(np.exp(posteriors), axis = 1, keepdims = True)
+        
+        #Since probabilities can be very small, we use log-sum-exp trick for numerical stability
+        #First, find the maximum value for each row
+        max_posteriors = np.max(posteriors, axis = 1, keepdims = True)
+        
+        #The, subtract the maximum from each value and exp
+        exp_posteriors = np.exp(posteriors - max_posteriors)
+        
+        #Normalize to get probabilities
+        probs = exp_posteriors / np.sum(exp_posteriors, axis = 1, keepdims = True)
 
         #The predicted class is the one with highest probability (see theory)
-        return self.classes[np.argmax(probs, axis = 1)]
+        return self.classes[np.argmax(probs, axis = 1)], probs[:, 1]
     
     def plot_gaussian_pdfs(self, feature_names, n_cols = 1):
         """

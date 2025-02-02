@@ -11,10 +11,10 @@ class BaseModel(ABC):
 
     #Up to now, this method only pass: implment it in the child class
     @abstractmethod
-    def train(self):
+    def fit(self, X = None, y = None):
         pass
 
     #Up to now, this method only pass: implment it in the child class
     @abstractmethod
-    def predict(self):
+    def predict(self, X = None):
         pass
