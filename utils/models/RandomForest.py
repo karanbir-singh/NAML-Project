@@ -16,10 +16,13 @@ class RandomForest(BaseModel):
                  min_samples_leaf = 1, 
                  min_impurity_decrease = 0.0,
                  max_thresholds = 1,
+                 max_features = "sqrt", #As explained in the theory part, for classification tasks, sqrt(n_features) is typically used for classification.
+                                        #We choose to not pass directly this value to the DT because in some contexts, user might want to change it;
+                                        #see for more details methods "build_tree(...)" and "find_best_split(...)" of DT.
                  random_state = 0):
         
         """
-            Initialize the decision tree parameters.
+            Initializes the decision tree parameters.
             
             Args:
                 - Parameters of RF:
@@ -37,11 +40,10 @@ class RandomForest(BaseModel):
                                                     - if "sqrt", then int(sqrt(n_features)); 
                                                     - if "log2", then int(log2(n_features)):
                                                     - if float, then int(n_features * max_features);
+                                                    - if int, then max_features;
                                                     - if None, all features
                     random_state (int): random seed.
         """
-
-        super().__init__()
         
         self.n_trees = n_trees
 
@@ -52,9 +54,7 @@ class RandomForest(BaseModel):
                                    min_samples_leaf = min_samples_leaf,
                                    min_impurity_decrease = min_impurity_decrease,
                                    max_thresholds = max_thresholds,
-                                   max_features = "sqrt", #As explained in the theory part, for classification tasks, sqrt(n_features) have to be used.
-                                                          #Thus, we pass directly to the DT the parameter max_features = "sqrt", so that it will be the DT to selct randomly them;
-                                                          #see for more details methods "build_tree(...)" and "find_best_split(...)" of DT.
+                                   max_features = max_features,
                                    random_state = random_state)
                      for _ in range(self.n_trees)]
 
@@ -78,27 +78,58 @@ class RandomForest(BaseModel):
             #Then, we train the DT on it
             self.trees[i].fit(X_bs, y_bs)
 
-    def predict(self, X):
+    def predict(self, X, type = "prob"):
         """
             This method predicts the labels of a given set of samples.
 
             Args:
-                X (np.ndarray): the matrix containing the samples to be classified (samples on rows)
-
+                X (np.ndarray): the matrix containing the samples to be classified (samples on rows).
+                type (str): if "prob", predicted labels and average probabilities for them are returned,
+                            if "voting", predicted labels and vosting fraction are returned.
+ 
             Returns:
-                labels (np.ndarray): the predicted label of each sample in X
+                labels (np.ndarray): the predicted label of each sample in X.
+                scores (np.ndarray): the score associated to each prediction (see "type" attribute).
         """
 
-        #As define in the theory part, we collect the prediction of each tree.
-        #Note: the resulting matrix is n_trees x n_samples, so we have to compute the frequencies of the values
-        #on the columns, not on the rows!
-        predictions = np.array([t.predict(X) for t in self.trees])  
-        
-        #scipy.stats.mode (axis = 0) collets all the modes or "modal" (most common values) along with their frequencies
-        labels, _ = scipy.stats.mode(predictions, axis = 0)
+        #As define in the theory part, we collect the prediction and probabilities of each tree.
+        pred_labels, pred_probs = zip(*[t.predict(X) for t in self.trees])
 
-        #Note: this operation is done in the RF notebook. Here, to make predict(...) compatible with all the other classes 
-        #in which it returns only the labels, it has been commented out and "scores" is not returned.
-        #scores = counts / predictions.shape[0]
+        #Note: this will a matrix of shape n_trees x n_samples because the prediction is a number 
+        pred_labels = np.array(pred_labels)
 
-        return labels
+        #Note: this will be a tensor of shape n_trees x n_samples x n_classes because each tree is outputting a vector of probabilities
+        pred_probs = np.array(pred_probs)
+
+        if type == "prob":          
+            #First, compute the average the probabilities across all trees: we are working row by row (each row is n_samples x n_classes),
+            #taking the everage of each array of probabilities [... n_classes ...]. The resulting matrix will be n_samples x n_classes
+            avg_probs = np.mean(pred_probs, axis = 0)
+            
+            #Each column of "avg_probs" contains the average probabilities for a specific class; thus, to have the label of each sample, we have to take the 
+            #argmax over all the columns argmax([... n_classes ...]).
+            labels = np.argmax(avg_probs, axis = 1)
+    
+            return labels, avg_probs
+        elif type == "voting":
+            #For each sample, voting fractions are repreented by an array of length n_classes and we have n_samples, n_classes samples, so
+            #the matrix has shape (n_samples, n_classes)
+            voting_fractions = np.zeros((X.shape[0], self.trees[0].num_classes))  
+
+            #Each row of pred_labels contains the labels assigned to all the samples by a specific tree, so to compute the voting fraction, we need to 
+            #count the frequencies of each label in a certain column and then normalize them
+            for sample_idx in range(X.shape[0]):
+            
+                #Count the number of trees voting for each class for the current sample: min_legth = num_classes is used so that even if all 
+                #trees agree on a certain label the resulting voting_fractions array will have length n_classes ([0, 0, ..., 1, 0, 0])
+                class_counts = np.bincount(pred_labels[:, sample_idx], minlength = self.trees[0].num_classes)
+                
+                #Then, normalize to obtain a value in [0, 1]
+                voting_fractions[sample_idx] = class_counts / self.n_trees
+
+            #The predicted label is the one with the lergest voting fraction
+            labels = np.argmax(voting_fractions, axis = 1)
+
+            return labels, voting_fractions
+        else:
+            raise ValueError(f"Paramter 'type' should be either 'prob' or 'voting', got {type}")

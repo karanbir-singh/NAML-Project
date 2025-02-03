@@ -24,7 +24,7 @@ class Node:
 
         self.class_prob = class_prob
 
-class DecisionTree:
+class DecisionTree(BaseModel):
     def __init__(self, 
                  criterion = "gini", 
                  max_depth = None, 
@@ -49,7 +49,7 @@ class DecisionTree:
                                                 - if "sqrt", then int(sqrt(n_features)); 
                                                 - if "log2", then int(log2(n_features)):
                                                 - if float, then int(n_features * max_features);
-                                                - if int, the min(n_features, max_features);
+                                                - if int, then min(n_features, max_features);
                                                 - if None, all features
                 random_state (int): random seed.
         """
