@@ -8,7 +8,7 @@ import numpy as np
 @partial(jax.jit, static_argnums = (1,))
 def generate_synthetic_samples(X_minority, n_samples, indices):
     """
-        This is an helper function that is used to generate synthetic samples using the SMOTE algorithm.
+        This is a helper function that is used to generate synthetic samples using the SMOTE algorithm.
         It's JIT-compiled, and the `indices` argument is marked as a static argument for performance.
         
         Args:
@@ -58,8 +58,8 @@ def fit_resample(X_minority, n_samples, k = 5):
             k: number of nearest neighbors to consider for SMOTE.
         
         Returns:
-            A JAX array of synthetic samples: rember that the output is (n_samples, n_features) not (n_smaple + n_minority, n_features),
-            so you will need to add later if you nned to.
+            A JAX array of synthetic samples: remember that the output is (n_samples, n_features) not (n_sample + n_minority, n_features),
+            so you will need to add later if you need to.
     """
 
     X_minority = jnp.array(X_minority)
