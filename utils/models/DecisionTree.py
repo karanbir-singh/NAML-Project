@@ -24,7 +24,7 @@ class Node:
 
         self.class_prob = class_prob
 
-class DecisionTree(BaseModel):
+class DecisionTree:
     def __init__(self, 
                  criterion = "gini", 
                  max_depth = None, 
@@ -49,6 +49,7 @@ class DecisionTree(BaseModel):
                                                 - if "sqrt", then int(sqrt(n_features)); 
                                                 - if "log2", then int(log2(n_features)):
                                                 - if float, then int(n_features * max_features);
+                                                - if int, the min(n_features, max_features);
                                                 - if None, all features
                 random_state (int): random seed.
         """
@@ -159,8 +160,12 @@ class DecisionTree(BaseModel):
         split_idx, split_threshold = None, None
         
         features = range(X.shape[1])
+
+        #If "max_features" is a int, then min(max_features, X.shape[1]) features will be evaulated
+        if type(self.max_features) == int:
+            features = np.random.choice(features, size = min(self.max_features, X.shape[1]), replace = False)
         
-        #If "max_features" is a float, then int(sqrt(n_features)) features will be evaulated
+        #If "max_features" is a float, then int(max_features * num_features) features will be evaulated
         if type(self.max_features) == float:
             features = np.random.choice(features, size = int(X.shape[1] * self.max_features), replace = False)
         

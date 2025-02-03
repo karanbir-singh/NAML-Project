@@ -85,6 +85,7 @@ def undersample(X, y, target_label, drop_percentage):
     num_to_keep = int(len(y == target_label) * (1 - drop_percentage))
 
     #Compute randmly the indices of the samples to be kept
-    keep_indices = np.random.choice(np.arange(X.shape[0]), size = num_to_keep, replace = False)
+    keep_indices = np.random.choice(np.where(y == target_label)[0], size = num_to_keep, replace = False)
+    keep_indices = np.concatenate([keep_indices, np.where(y != target_label)[0]])
 
     return X[keep_indices], y[keep_indices]
