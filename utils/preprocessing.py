@@ -42,7 +42,7 @@ def generate_synthetic_samples(X_minority, n_samples, indices):
     key, subkey3 = random.split(key)
     gaps = random.uniform(subkey3, (n_samples, 1))
 
-    #Place the syntetic point by interpolating between the selected sample and its neighbor
+    #Place the synthetic point by interpolating between the selected sample and its neighbor
     diffs = selected_neighbors - selected_samples
     synthetic = selected_samples + gaps * diffs
 
@@ -84,7 +84,7 @@ def undersample(X, y, target_label, drop_percentage):
     #Determine number of samples to keep
     num_to_keep = int(len(y == target_label) * (1 - drop_percentage))
 
-    #Compute randmly the indices of the samples to be kept
+    #Compute randomly the indices of the samples to be kept
     keep_indices = np.random.choice(np.where(y == target_label)[0], size = num_to_keep, replace = False)
     keep_indices = np.concatenate([keep_indices, np.where(y != target_label)[0]])
 

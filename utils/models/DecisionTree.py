@@ -64,7 +64,7 @@ class DecisionTree(BaseModel):
         self.random_state = random_state
 
         #This attribute is not defined in the constructor because it's known only when y data is passed (self.fit(...))
-        #It will be used to make the length of the arrays of probabilities all equal to num_classes
+        #It will be used to make the length of the probabilities arrays all equal to num_classes
         self.num_classes = None
 
         self.tree = None
@@ -73,7 +73,7 @@ class DecisionTree(BaseModel):
 
     def entropy(self, y):
         """
-            Calculate entropy for a target variable y.
+            Utility method to compute entropy for a target variable y.
 
             Args:
                 y (np.ndarray): the target variable.
@@ -92,7 +92,7 @@ class DecisionTree(BaseModel):
 
     def gini(self, y):
         """
-            Calculate Gini impurity for a target variable y.
+            Utility method to compute Gini impurity for a target variable y.
             
             Args:
                 y (np.ndarray): the target variable.
@@ -161,40 +161,40 @@ class DecisionTree(BaseModel):
         
         features = range(X.shape[1])
 
-        #If "max_features" is a int, then min(max_features, X.shape[1]) features will be evaulated
+        #If "max_features" is a int, then min(max_features, X.shape[1]) features will be evaluated
         if type(self.max_features) == int:
             features = np.random.choice(features, size = min(self.max_features, X.shape[1]), replace = False)
         
-        #If "max_features" is a float, then int(max_features * num_features) features will be evaulated
+        #If "max_features" is a float, then int(max_features * num_features) features will be evaluated
         if type(self.max_features) == float:
             features = np.random.choice(features, size = int(X.shape[1] * self.max_features), replace = False)
         
-        #If "max_features" is "sqrt", then int(sqrt(n_features)) features will be evaulated
+        #If "max_features" is "sqrt", then int(sqrt(n_features)) features will be evaluated
         if self.max_features == "sqrt":
             features = np.random.choice(features, size = int(np.sqrt(X.shape[1])), replace = False)
         
-        #If "max_features" is "log2", then int(log2(n_features)) features will be evaulated
+        #If "max_features" is "log2", then int(log2(n_features)) features will be evaluated
         if self.max_features == "log2":
             features = np.random.choice(features, size = int(np.log2(X.shape[1])), replace = False)
 
-        #If all of this conditions fail (i.e. "self.max_features" is None or another unacceptable value), "features" will not be still range(X.sahpe[1])
+        #If all of this conditions fail (i.e. "self.max_features" is None or another unacceptable value), "features" will be still range(X.shape[1])
 
         for feature_idx in features:
-            #Remove the duplictes from the feature values, sort it and compute the pairwise mean
+            #Remove the duplicates from the feature values, sort it and compute the pairwise means
             values = np.sort(np.unique(X[:, feature_idx]))
             pairwise_mean = (values[:-1] + values[1:]) / 2
 
             #Thresholds are chosen randomly between all possible values of the pairwise means
-            #Another idea is to choose them dicrectly on "values" (avoid sort and pairwise mean, but not unique)
+            #Another idea is to choose them directly on "values" (avoid sort and pairwise mean, but not unique)
             thresholds = np.random.choice(pairwise_mean, size = min(len(np.unique(pairwise_mean)), self.max_thresholds), replace = False)
 
-            #For each threshold, calculate the information gain and choose the best threshold
+            #For each threshold, compute the information gain and choose the best threshold
             for threshold in thresholds:
                 #Split the dataset (X, y) based on the feature and threshold
                 #Same as the split function, samples with feature values less than or equal to the threshold go to the left child, the rest go to the right child
                 y_left, y_right = self.split_samples(X, y, feature_idx, threshold, [False, False, True, True])
 
-                #The split is considered to be invalid if the number of samples in the left or right child is less than the minimum number of samples required to split
+                #The split is considered to be invalid if the number of samples in the left or right child is less than the minimum number of samples required to be a leaf
                 #In this case, we skip to the next threshold
                 if len(y_left) < self.min_samples_leaf or len(y_right) < self.min_samples_leaf:
                     continue
@@ -212,7 +212,7 @@ class DecisionTree(BaseModel):
 
     def compute_information_gain(self, y, y_left, y_right, impurity):
         """
-            This method is used to compute inromation gain.
+            This method is used to compute information gain.
 
             Args:
                 y (np.ndarray): the target variable.
@@ -258,18 +258,18 @@ class DecisionTree(BaseModel):
         #3. If the number of samples is less than the minimum number of samples required to split
         #If at least one condition is True, return a leaf node with the most common label
         if (depth >= self.max_depth or n_labels == 1 or n_samples < self.min_samples_split):
-            class_counts = np.bincount(y, minlength = self.num_classes)
-            return Node(value = np.argmax(class_counts), class_prob = class_counts / np.sum(class_counts))
+            class_count = np.bincount(y, minlength = self.num_classes)
+            return Node(value = np.argmax(class_count), class_prob = class_count / np.sum(class_count))
 
         #Find the best split (i.e., the best feature and threshold to split on)
         feature_idx, threshold, best_gain = self.find_best_split(X, y)
         
         #If the best split is invalid (i.e., feature_idx is None or best_gain is less than the minimum impurity decrease), return a leaf node with the most common label.
         if feature_idx is None or best_gain < self.min_impurity_decrease:
-            class_counts = np.bincount(y, minlength = self.num_classes)
-            return Node(value = np.argmax(class_counts), class_prob = class_counts / np.sum(class_counts))
+            class_count = np.bincount(y, minlength = self.num_classes)
+            return Node(value = np.argmax(class_count), class_prob = class_count / np.sum(class_count))
 
-        #Split the dataset based on the best feature and threshold
+        #If all the previous conditions fail, we must split the dataset based on the best feature and threshold
         X_left, X_right, y_left, y_right = self.split_samples(X, y, feature_idx, threshold)
 
         #This is the recursive part of the algorithm: we are using DFS, starting from the root node and going down to the leaf nodes along the branches.
@@ -277,17 +277,13 @@ class DecisionTree(BaseModel):
         left_child = self.build_tree(X_left, y_left, depth + 1)
         right_child = self.build_tree(X_right, y_right, depth + 1)
 
-        #At this point we have built the left and right children of the current node.
-        #If both children are leaves and they have same most common label, consider deleting the leafs and assigning the parent node the most common label making it a leaf node
-        #if left_child.value is not None and right_child.value is not None and left_child.value == right_child.value:
-        #    return Node(value = left_child.value, class_prob = (len(y_left) * left_child.class_prob + len(y_right) * right_child.class_prob) / (len(y_left) + len(y_right)))
-        #else:
+        #At this point we have built the left and right children of the current node, so we generate a new Node
         return Node(feature = feature_idx, threshold = threshold, left = left_child, right = right_child, class_prob = None)
 
     def fit(self, X, y):
         """
-            This method is the entry point to build the decision tree from the training data: without it we woudn't be able to initialize self.tree.
-            Important:  it is necessary to call this method before making predictions.
+            This method is the entry point to build the decision tree from the training data: without it we wouldn't be able to initialize self.tree.
+            Important:  it is necessary to call this method before making predictions!
 
             Args:
                 X (np.ndarray): the feature matrix.
