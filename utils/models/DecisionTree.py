@@ -63,7 +63,7 @@ class DecisionTree(BaseModel):
         self.max_features = max_features
         self.random_state = random_state
 
-        #This attribute is not defined in the constructore because it's known only when y data is passed (self.fit(...))
+        #This attribute is not defined in the constructor because it's known only when y data is passed (self.fit(...))
         #It will be used to make the length of the arrays of probabilities all equal to num_classes
         self.num_classes = None
 
@@ -259,7 +259,7 @@ class DecisionTree(BaseModel):
         #If at least one condition is True, return a leaf node with the most common label
         if (depth >= self.max_depth or n_labels == 1 or n_samples < self.min_samples_split):
             class_counts = np.bincount(y, minlength = self.num_classes)
-            return Node(value = np.bincount(y).argmax(), class_prob = class_counts / np.sum(class_counts))
+            return Node(value = np.argmax(class_counts), class_prob = class_counts / np.sum(class_counts))
 
         #Find the best split (i.e., the best feature and threshold to split on)
         feature_idx, threshold, best_gain = self.find_best_split(X, y)
@@ -267,7 +267,7 @@ class DecisionTree(BaseModel):
         #If the best split is invalid (i.e., feature_idx is None or best_gain is less than the minimum impurity decrease), return a leaf node with the most common label.
         if feature_idx is None or best_gain < self.min_impurity_decrease:
             class_counts = np.bincount(y, minlength = self.num_classes)
-            return Node(value = np.bincount(y).argmax(), class_prob = class_counts / np.sum(class_counts))
+            return Node(value = np.argmax(class_counts), class_prob = class_counts / np.sum(class_counts))
 
         #Split the dataset based on the best feature and threshold
         X_left, X_right, y_left, y_right = self.split_samples(X, y, feature_idx, threshold)
@@ -280,7 +280,7 @@ class DecisionTree(BaseModel):
         #At this point we have built the left and right children of the current node.
         #If both children are leaves and they have same most common label, consider deleting the leafs and assigning the parent node the most common label making it a leaf node
         #if left_child.value is not None and right_child.value is not None and left_child.value == right_child.value:
-        #    return Node(value = left_child.value)
+        #    return Node(value = left_child.value, class_prob = (len(y_left) * left_child.class_prob + len(y_right) * right_child.class_prob) / (len(y_left) + len(y_right)))
         #else:
         return Node(feature = feature_idx, threshold = threshold, left = left_child, right = right_child, class_prob = None)
 
@@ -335,78 +335,3 @@ class DecisionTree(BaseModel):
 
         #For each sample in X, we traverse the tree to make a prediction
         return np.array([l.value for l in leafs]), np.array([l.class_prob for l in leafs])
-
-    def compute_feature_importance(self, X, y):
-        """
-            This method compute the feature importance based on impurity reductions for each feature.
-
-            Args:
-                X (np.ndarray): the feature matrix.
-                y (np.ndarray): the target variable.
-
-            Returns:
-                importances (np.ndarray): the feature importances. Importances are normalized to sum to 1 and values of 0.0 indicate that a feature is not used by the classifier.
-        """
-
-        def explore_tree(node, parent_impurity, X, y):
-            """
-                This method is local to "compute_feature_importance", meaning that it's private and visible only to it.
-                It is used to recursively compute the importance of each feature.
-
-                Args:
-                    node (Node): the current node.
-                    parent_impurity (float): the impurity of the parent node.
-                    X (np.ndarray): the feature matrix.
-                    y (np.ndarray): the target variable.
-            """
-
-            #If the node is None or the node is a leaf node, return because there is no split (and information gain) to consider
-            if node is None or node.value is not None:
-                return 
-            
-            #Get the feature used for the current split
-            feature_idx = node.feature
-
-            #If the node is not a leaf, it means that some split is applied in it, so we split all the available data based on it
-            X_left, X_right, y_left, y_right = self.split_samples(X, y, feature_idx, node.threshold)
-
-            #Compute the number of samples in the left and right children
-            n_left, n_right = len(y_left), len(y_right)
-            total_samples = n_left + n_right
-
-            #If the number of samples in the left or right child is 0, return because there is no split (and information gain) to consider: empty node
-            if total_samples == 0:
-                return
-
-            #As done in the "find_best_split" method, we calculate the impurity of the parent node: this is a lambda function that can be either Gini or Entropy
-            impurity_fn = self.gini if self.criterion == "gini" else self.entropy
-
-            #We compute the impurity (using the previously defined lambda function) of the left and right children: we do it here because we'll need those values in several following steps
-            left_impurity = impurity_fn(y_left)
-            right_impurity = impurity_fn(y_right)
-
-            #Calculate the impurity reduction from this split: see the formula in the theory part
-            impurity_reduction = parent_impurity - (n_left * impurity_fn(y_left) + n_right * impurity_fn(y_right)) / total_samples
-
-            #Accumulate the impurity reduction for the feature used at this node: we use the sum instead of the simple assignment because a feature might be used multiple times in the tree
-            importances[feature_idx] = importances[feature_idx] + impurity_reduction
-
-            #Finally, we explore the left and right children of the current node in a DFS-like manner to compute the importances of features used in the subrees
-            #Note that we pass the impurity of the children because this will become the parent impurity in the recursive call
-            explore_tree(node.left, left_impurity, X_left, y_left)
-            explore_tree(node.right, right_impurity, X_right, y_right)
-        
-        #If the tree has not been trained yet, raise an error
-        if self.tree is None:
-            raise ValueError("The tree has not been trained yet.")
-        
-        #This array will store the importance of each feature
-        importances = np.zeros(X.shape[1]) 
-
-        # Start recursion from the root
-        root_impurity = self.gini(y) if self.criterion == "gini" else self.entropy(y)
-        explore_tree(self.tree, root_impurity, X, y)
-
-        #Before returning, we normalize the feature importances so they sum to 1. 
-        #This operation cannot be done in a simple manner inside the recursion, so we do it in the parent of the "recurce" method
-        return importances / np.sum(importances)
