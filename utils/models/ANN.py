@@ -5,7 +5,7 @@ from utils.data_processer import *
 from utils.models.base_model import BaseModel
 
 class ANN(BaseModel):
-    def __init__(self, layers_size=None, act_func=jnp.tanh, out_act_fun=jax.nn.sigmoid):
+    def __init__(self, layers_size=None, act_func=jnp.tanh, out_act_func=jax.nn.sigmoid):
         """
         A class representing an artificial neural network configuration for specifying the structure
         and activation functions of each layer in the network.
@@ -28,7 +28,7 @@ class ANN(BaseModel):
 
         self.layers_size = layers_size
         self.act_func = act_func
-        self.out_act_fun = out_act_fun
+        self.out_act_func = out_act_func
 
     def initialize_parameters(self, layers_size):
         """
@@ -494,7 +494,7 @@ class ANN(BaseModel):
 
         # On the output layer it is applied the sigmoid function
         # since the output is needed to be between 0 and 1
-        layer = self.out_act_fun(layer)
+        layer = self.out_act_func(layer)
         layer = layer.T
 
         return layer
