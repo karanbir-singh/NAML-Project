@@ -5,16 +5,36 @@ from utils.data_processer import *
 from utils.models.base_model import BaseModel
 
 class LogisticRegression(BaseModel):
-    def __init__(self, num_features=None):
+    def __init__(self, num_features=None, optimizer=None):
         """
         A class representing a logistic regression classifier configuration for specifying the number of features
-        the classifier has to manage.
+        the classifier has to manage and the optimization algorithm to use during training.
 
         :param num_features: The number of features of the dataset.
-        :type num_features: Optional[int]
+        :type num_features: int
+
+        :param optimizer: The optimizer to use during training.
+        :type optimizer: dict
         """
 
         self.num_features = num_features
+        self.weights = None
+        self.bias = None
+
+        # Check if regularization is required
+        if 'penalization' in optimizer.keys():
+            optimizer['loss_function'] = self.regularized_loss(penalization=optimizer['penalization'])
+        else:
+            optimizer['loss_function'] = self.cross_entropy
+        del optimizer['penalization']
+
+        # Set optimization algorithm
+        if optimizer['opt_type'] == 'SGD':
+            del optimizer['opt_type']
+            self.optimizer = self.SGD(**optimizer)
+        elif optimizer['opt_type'] == 'RMSprop':
+            del optimizer['opt_type']
+            self.optimizer = self.RMSprop(**optimizer)
 
     def initialize_parameters(self, num_features):
         """
@@ -59,27 +79,23 @@ class LogisticRegression(BaseModel):
         return partial_sum / n_weights
 
     # Loss function
-    def cross_entropy(self):
+    def cross_entropy(self, x, y, weights, bias):
         """
         Defines the cross-entropy loss function for classification problems with
         logistic output. This function calculates the negative log-likelihood
         of the predictions made by the model when compared with the true labels.
         It is commonly used as a loss function for binary classification tasks.
 
-        :returns: A callable function that computes the cross-entropy loss
-            for given input features, true labels, and model parameters. The
-            callable expects four arguments: x (input features), y (true labels),
-            weights and bias (model parameters).
-        :rtype: Callable
+        :returns: the value of cross-entropy loss
+            for given input features, true labels, and model parameters.
+        :rtype: float
         """
-        def callable(x, y, weights, bias):
-            y_pred = self.predict(x, weights, bias)
-            return -jnp.mean(y * jnp.log(y_pred) + (1 - y) * jnp.log(1 - y_pred))
-        return callable
+        y_pred = self.get_prediction(x, weights, bias)
+        return -jnp.mean(y * jnp.log(y_pred) + (1 - y) * jnp.log(1 - y_pred))
 
-    def regularized_loss(self, loss_function, penalization):
+    def regularized_loss(self, penalization):
         """
-        Computes a regularized loss function by combining the given loss function with
+        Computes a regularized loss function by combining the cross_entropy with
         a penalization term. The penalization term is scaled based on the dataset size
         and involves the Mean Squared Weight (MSW) for the provided weights.
 
@@ -87,15 +103,12 @@ class LogisticRegression(BaseModel):
         and computes the regularized loss by applying the given loss function and adding
         the scaled penalization term.
 
-        :param loss_function: A callable function representing the loss function to be
-            applied to the dataset. It should accept `x`, `y`, `weights` and `bias` as inputs.
         :param penalization: A scalar value representing the penalization term to be
             applied during regularization. This value is combined with the MSW.
-        :return: Returns a callable function which computes the regularized loss as a
-            combination of the loss function and the penalization term.
+        :return: Returns a callable function which computes the cross entropy loss with penalization term.
         """
         def callable(x, y, weights, bias):
-            return loss_function(x, y, weights, bias) + penalization / (2 * x.shape[0]) * self.MSW(weights)
+            return self.cross_entropy(x, y, weights, bias) + penalization / (2 * x.shape[0]) * self.MSW(weights)
 
         return callable
 
@@ -237,10 +250,10 @@ class LogisticRegression(BaseModel):
             return weights, bias, history
         return callable
 
-    def fit(self, X=None, y=None, weights=None, bias=None, optimizer=None):
+    def fit(self, X=None, y=None):
         """
-        Fits the model to the data (X, y) using the specified parameters (weights and bias) and optimization
-        strategy. The function applies the provided optimizer to train on the input data
+        Fits the model to the data (X, y) using the optimization algorithm.
+        The function applies the class' optimizer to train on the input data
         and returns the updated parameters and the loss function optimization history.
 
         The function does not modify the data or labels directly,
@@ -248,15 +261,16 @@ class LogisticRegression(BaseModel):
 
         :param X: Input features for the model.
         :param y: Target labels corresponding to the input features.
-        :param weights: Weights to optimize
-        :param bias: Bias to optimize
-        :param optimizer: Callable, the function used for optimization.
-        :return: Optimized parameters and the loss function optimization history.
+        :return: the loss function optimization history.
         """
 
-        return optimizer(X, y, weights, bias)
+        # Initialize parameters
+        self.weights, self.bias  = self.initialize_parameters(self.num_features)
 
-    def predict(self, X=None, weights=None, bias=None):
+        self.weights, self.bias, history = self.optimizer(X, y, self.weights, self.bias)
+        return history
+
+    def get_prediction(self, X, weights, bias):
         """
         Predicts output values based on the provided input data, model weights and bias.
 
@@ -265,8 +279,19 @@ class LogisticRegression(BaseModel):
         :param bias: A float contain the bias of the model.
         :return: The predicted output values, as a NumPy array of shape (n_samples, n_outputs).
         """
+
         # Algorithm
         z = bias + X @ weights
         y_pred = jax.nn.sigmoid(-z)
 
         return y_pred
+
+    def predict(self, X=None):
+        """
+        This is an entry point for the Logistic Regression classifier prediction routine.
+
+        :param X: Input features for the model.
+        :return: Predicted output values for the input features.
+        """
+
+        return self.get_prediction(X, self.weights, self.bias), None
