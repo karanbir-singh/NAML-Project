@@ -5,13 +5,10 @@ from utils.data_processer import *
 from utils.models.base_model import BaseModel
 
 class ANN(BaseModel):
-    def __init__(self, layers_size=None, act_func=jnp.tanh, out_act_func=jax.nn.sigmoid):
+    def __init__(self, layers_size=None, act_func=jnp.tanh, out_act_func=jax.nn.sigmoid, optimizer=None):
         """
-        A class representing an artificial neural network configuration for specifying the structure
-        and activation functions of each layer in the network.
-
-        This class encapsulates the size of the layers, the activation function for intermediate layers,
-        and the output activation function.
+        A class representing an artificial neural network configuration for specifying the structure,
+        activation functions of each layer in the network and the optimization algorithm to use during training.
 
         :param layers_size: List specifying the size of each layer of the neural network.
             This includes both input and output layer sizes.
@@ -21,14 +18,39 @@ class ANN(BaseModel):
             of the neural network. Defaults to hyperbolic tangent (jnp.tanh).
         :type act_func: Callable
 
-        :param out_act_fun: Activation function to be applied to the output layer of the
+        :param out_act_func: Activation function to be applied to the output layer of the
             neural network. Defaults to sigmoid (jax.nn.sigmoid).
-        :type out_act_fun: Callable
+        :type out_act_func: Callable
+
+        :param optimizer: Optimizer to be used for training the neural network.
+        :type optimizer: dict
         """
 
         self.layers_size = layers_size
         self.act_func = act_func
         self.out_act_func = out_act_func
+        self.params = None
+
+        # Check if regularization is required
+        if 'penalization' in optimizer.keys():
+            optimizer['loss_function'] = self.regularized_loss(penalization=optimizer['penalization'])
+        else:
+            optimizer['loss_function'] = self.cross_entropy
+        del optimizer['penalization']
+
+        # Set optimization algorithm
+        if optimizer['opt_type'] == 'SGD':
+            del optimizer['opt_type']
+            self.optimizer = self.SGD(**optimizer)
+        elif optimizer['opt_type'] == 'SGD_momentum':
+            del optimizer['opt_type']
+            self.optimizer = self.SGD_momentum(**optimizer)
+        elif optimizer['opt_type'] == 'NAG':
+            del optimizer['opt_type']
+            self.optimizer = self.NAG(**optimizer)
+        elif optimizer['opt_type'] == 'RMSprop':
+            del optimizer['opt_type']
+            self.optimizer = self.RMSprop(**optimizer)
 
     def initialize_parameters(self, layers_size):
         """
@@ -84,61 +106,38 @@ class ANN(BaseModel):
         return partial_sum / n_weights
 
     # Loss functions
-    def cross_entropy(self):
+    def cross_entropy(self, x, y, params):
         """
         Defines the cross-entropy loss function for classification problems with
         logistic output. This function calculates the negative log-likelihood
         of the predictions made by the model when compared with the true labels.
         It is commonly used as a loss function for binary classification tasks.
 
-        :returns: A callable function that computes the cross-entropy loss
-            for given input features, true labels, and model parameters. The
-            callable expects three arguments: x (input features), y (true labels),
-            and params (model parameters).
-        :rtype: Callable
+        :returns: the value cross-entropy loss
+            for given input features, true labels, and model parameters.
+        :rtype: float
         """
-        def callable(x, y, params):
-            y_pred = self.predict(x, params)
-            return -jnp.mean(y * jnp.log(y_pred) + (1 - y) * jnp.log(1 - y_pred))
 
-        return callable
+        y_pred = self.get_prediction(x, params)
+        return -jnp.mean(y * jnp.log(y_pred) + (1 - y) * jnp.log(1 - y_pred))
 
-    def MSE(self):
+    def regularized_loss(self, penalization):
         """
-        Defines a callable function that computes the Mean Squared Error (MSE) between
-        the predicted and actual values using provided parameters.
-
-        :returns: A callable function that computes the Mean Squared Error
-            for given input features, true labels, and model parameters. The
-            callable expects three arguments: x (input features), y (true labels),
-            and params (model parameters).
-        :rtype: Callable
-        """
-        def callable(x, y, params):
-            y_pred = self.predict(x, params)
-            return jnp.mean((y_pred - y) ** 2)
-
-        return callable
-
-    def regularized_loss(self, loss_function, penalization):
-        """
-        Computes a regularized loss function by combining the given loss function with
+        Computes a regularized loss function by combining the cross entropy function with
         a penalization term. The penalization term is scaled based on the dataset size
         and involves the Mean Squared Weight (MSW) for the provided parameters.
 
         This method returns a callable function that takes `x`, `y`, and `params` as inputs
-        and computes the regularized loss by applying the given loss function and adding
+        and computes the regularized loss by applying the cross entropy function and adding
         the scaled penalization term.
 
-        :param loss_function: A callable function representing the loss function to be
-            applied to the dataset. It should accept `x`, `y`, and `params` as inputs.
         :param penalization: A scalar value representing the penalization term to be
             applied during regularization. This value is combined with the MSW.
         :return: Returns a callable function which computes the regularized loss as a
-            combination of the loss function and the penalization term.
+            combination of the cross entropy function and the penalization term.
         """
         def callable(x, y, params):
-            return loss_function(x, y, params) + penalization / (2 * x.shape[0]) * self.MSW(params)
+            return self.cross_entropy(x, y, params) + penalization / (2 * x.shape[0]) * self.MSW(params)
 
         return callable
 
@@ -448,25 +447,7 @@ class ANN(BaseModel):
 
         return callable
 
-    def fit(self, X=None, y=None, params=None, optimizer=None):
-        """
-        Fits the model to the data (X, y) using the specified parameters and optimization
-        strategy. The function applies the provided optimizer to train on the input data
-        and returns the updated parameters and the loss function optimization history.
-
-        The function does not modify the data or labels directly,
-        but operates through the given optimizer.
-
-        :param X: Input features for the model.
-        :param y: Target labels corresponding to the input features.
-        :param params: Parameters to optimize, namely weights and biases.
-        :param optimizer: Callable, the function used for optimization.
-        :return: Optimized parameters and the loss function optimization history.
-        """
-
-        return optimizer(X, y, params)
-
-    def predict(self, X=None, params=None):
+    def get_prediction(self, X=None, params=None):
         """
         Predicts output values based on the provided input data and model parameters. Applies the defined activation
         functions to intermediary layers and output layer. The function assumes the
@@ -498,3 +479,32 @@ class ANN(BaseModel):
         layer = layer.T
 
         return layer
+
+    def fit(self, X=None, y=None):
+        """
+        Fits the model to the data (X, y) using the optimization strategy.
+        The function applies the provided optimizer to train on the input data
+        and returns the updated parameters and the loss function optimization history.
+
+        The function does not modify the data or labels directly,
+        but operates through the given optimizer.
+
+        :param X: Input features for the model.
+        :param y: Target labels corresponding to the input features.
+        :return: the loss function optimization history.
+        """
+
+        # Initialize parameters: weights and biases
+        self.params = self.initialize_parameters(self.layers_size)
+
+        self.params, history = self.optimizer(X, y, self.params)
+        return history
+
+    def predict(self, X=None):
+        """
+        This is an entry point for the ANN model prediction routine.
+
+        :param X: Input features for the model.
+        :return: Predicted output values for the input features.
+        """
+        return self.get_prediction(X, self.params), None
