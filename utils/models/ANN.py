@@ -73,6 +73,20 @@ class ANN(BaseModel):
             params.append(b)
 
         return params
+    
+    def change_first_layer_size(self, new_size):
+        """
+        Changes the size of the first layer of the ANN.
+
+        :param new_size: The new size of the first layer.
+        :type new_size: int
+        """
+
+        # Update the first layer size
+        self.layers_size[0] = new_size
+
+        # Reinitialize the parameters
+        self.params = self.initialize_parameters(self.layers_size)
 
     def MSW(self, params):
         """
