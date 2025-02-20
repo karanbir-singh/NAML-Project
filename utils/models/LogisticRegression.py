@@ -5,7 +5,7 @@ from utils.data_processer import *
 from utils.models.base_model import BaseModel
 
 class LogisticRegression(BaseModel):
-    def __init__(self, num_features=None, optimizer=None):
+    def __init__(self, optimizer=None):
         """
         A class representing a logistic regression classifier configuration for specifying the number of features
         the classifier has to manage and the optimization algorithm to use during training.
@@ -17,7 +17,6 @@ class LogisticRegression(BaseModel):
         :type optimizer: dict
         """
 
-        self.num_features = num_features
         self.weights = None
         self.bias = None
 
@@ -44,12 +43,10 @@ class LogisticRegression(BaseModel):
             :return: Parameters of the logistic regression classifier, specifically weights and biases.
         """
 
-        self.num_features = num_features
-
         np.random.seed(0)  # For reproducibility
 
         # Parameters
-        weights = np.random.randn(self.num_features, 1)
+        weights = np.random.randn(num_features, 1)
         bias = 0.
 
         return weights, bias
@@ -263,7 +260,7 @@ class LogisticRegression(BaseModel):
         """
 
         # Initialize parameters
-        self.weights, self.bias  = self.initialize_parameters(self.num_features)
+        self.weights, self.bias  = self.initialize_parameters(X.shape[1])
 
         self.weights, self.bias, history = self.optimizer(X, y, self.weights, self.bias)
         return history
