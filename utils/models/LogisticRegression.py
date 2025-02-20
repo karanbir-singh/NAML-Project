@@ -26,15 +26,13 @@ class LogisticRegression(BaseModel):
             optimizer['loss_function'] = self.regularized_loss(penalization=optimizer['penalization'])
         else:
             optimizer['loss_function'] = self.cross_entropy
-        del optimizer['penalization']
 
         # Set optimization algorithm
+        lr_params = {k: v for k, v in optimizer.items() if k != 'opt_type' and k != 'penalization'}
         if optimizer['opt_type'] == 'SGD':
-            del optimizer['opt_type']
-            self.optimizer = self.SGD(**optimizer)
+            self.optimizer = self.SGD(**lr_params)
         elif optimizer['opt_type'] == 'RMSprop':
-            del optimizer['opt_type']
-            self.optimizer = self.RMSprop(**optimizer)
+            self.optimizer = self.RMSprop(**lr_params)
 
     def initialize_parameters(self, num_features):
         """
@@ -249,7 +247,7 @@ class LogisticRegression(BaseModel):
                 history.append(loss(x_train, y_train, weights, bias))
             return weights, bias, history
         return callable
-
+        
     def fit(self, X=None, y=None):
         """
         Fits the model to the data (X, y) using the optimization algorithm.

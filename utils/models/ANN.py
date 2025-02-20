@@ -36,21 +36,17 @@ class ANN(BaseModel):
             optimizer['loss_function'] = self.regularized_loss(penalization=optimizer['penalization'])
         else:
             optimizer['loss_function'] = self.cross_entropy
-        del optimizer['penalization']
 
         # Set optimization algorithm
+        ann_params = {k: v for k, v in optimizer.items() if k != 'opt_type' and k != 'penalization'}
         if optimizer['opt_type'] == 'SGD':
-            del optimizer['opt_type']
-            self.optimizer = self.SGD(**optimizer)
+            self.optimizer = self.SGD(**ann_params)
         elif optimizer['opt_type'] == 'SGD_momentum':
-            del optimizer['opt_type']
-            self.optimizer = self.SGD_momentum(**optimizer)
+            self.optimizer = self.SGD_momentum(**ann_params)
         elif optimizer['opt_type'] == 'NAG':
-            del optimizer['opt_type']
-            self.optimizer = self.NAG(**optimizer)
+            self.optimizer = self.NAG(**ann_params)
         elif optimizer['opt_type'] == 'RMSprop':
-            del optimizer['opt_type']
-            self.optimizer = self.RMSprop(**optimizer)
+            self.optimizer = self.RMSprop(**ann_params)
 
     def initialize_parameters(self, layers_size):
         """
@@ -446,7 +442,7 @@ class ANN(BaseModel):
             return params, history
 
         return callable
-
+    
     def get_prediction(self, X=None, params=None):
         """
         Predicts output values based on the provided input data and model parameters. Applies the defined activation
