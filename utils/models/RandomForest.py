@@ -37,10 +37,10 @@ class RandomForest(BaseModel):
                     min_impurity_decrease (float): the minimum impurity decrease required to split a node.
                     max_thresholds (int): the maximum number of thresholds to use during best split search.
                     max_features (str / float): the maximum number of features to choose from in the given ones: 
-                                                    - if "sqrt", then `int(sqrt(n_features))`;
-                                                    - if "log2", then `int(log2(n_features))`;
-                                                    - if float, then `int(n_features * max_features)`;
-                                                    - if int, then `min(n_features, max_features)`;
+                                                    - if "sqrt", then int(sqrt(n_features)); 
+                                                    - if "log2", then int(log2(n_features)):
+                                                    - if float, then int(n_features * max_features);
+                                                    - if int, then max_features;
                                                     - if None, all features
                     random_state (int): random seed.
         """
@@ -88,7 +88,7 @@ class RandomForest(BaseModel):
                             if "voting", predicted labels and voting fraction are returned.
  
             Returns:
-                labels (np.ndarray): the predicted label of each sample in `X`.
+                labels (np.ndarray): the predicted label of each sample in X.
                 scores (np.ndarray): the score associated to each prediction (see "type" attribute).
         """
 

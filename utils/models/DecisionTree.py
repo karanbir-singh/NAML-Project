@@ -46,10 +46,10 @@ class DecisionTree(BaseModel):
                 max_thresholds (int): the maximum number of thresholds to use during best split search.
                 max_features (str / float): the maximum number of features to choose from when determining the best splits
                                             (note: they change at each call of "best_split"): 
-                                                - if "sqrt", then `int(sqrt(n_features))`; 
-                                                - if "log2", then `int(log2(n_features))`;
-                                                - if float, then `int(n_features * max_features)`;
-                                                - if int, then `min(n_features, max_features)`;
+                                                - if "sqrt", then int(sqrt(n_features)); 
+                                                - if "log2", then int(log2(n_features)):
+                                                - if float, then int(n_features * max_features);
+                                                - if int, then min(n_features, max_features);
                                                 - if None, all features
                 random_state (int): random seed.
         """
@@ -73,7 +73,7 @@ class DecisionTree(BaseModel):
 
     def entropy(self, y):
         """
-            Utility method to compute entropy for a target variable `y`.
+            Utility method to compute entropy for a target variable y.
 
             Args:
                 y (np.ndarray): the target variable.
@@ -92,7 +92,7 @@ class DecisionTree(BaseModel):
 
     def gini(self, y):
         """
-            Utility method to compute Gini impurity for a target variable `y`.
+            Utility method to compute Gini impurity for a target variable y.
             
             Args:
                 y (np.ndarray): the target variable.
@@ -116,10 +116,10 @@ class DecisionTree(BaseModel):
                 y (np.ndarray): the target variable.
                 feature_idx (int): the index of the feature to split on.
                 threshold (float): the threshold to split the feature on.
-                mask (list): list of booleans indicating which parameters to return. Order: `[X_left, X_right, y_left, y_right]`; if None, all parameters are returned.
+                mask (list): list of booleans indicating which parameters to return. Order: [X_left, X_right, y_left, y_right]; if None, all parameters are returned.
 
             Returns:
-                tuple: contains only the requested parameters based on the mask. Full order is `(X_left, X_right, y_left, y_right)`.
+                tuple: contains only the requested parameters based on the mask. Full order is (X_left, X_right, y_left, y_right).
         """
 
         #As defined in the theory part, the samples with feature values less than or equal to the threshold go to the left child, the rest go to the right child

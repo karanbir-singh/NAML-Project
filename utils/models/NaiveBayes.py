@@ -9,7 +9,7 @@ class GaussianNaiveBayes(BaseModel):
 
             Args:
                 classes (list): the classes the data is classified in.
-                                Note: this parameter can be removed and its usages replaced with `[0, 1]`, but since
+                                Note: this parameter can be removed and its usages replaced with [0, 1], but since
                                 NB can be used for multi-class problems, it seems reasonable to us keeping it. 
         """
 
