@@ -244,7 +244,7 @@ class LogisticRegression(BaseModel):
                 history.append(loss(x_train, y_train, weights, bias))
             return weights, bias, history
         return callable
-        
+
     def fit(self, X=None, y=None):
         """
         Fits the model to the data (X, y) using the optimization algorithm.
@@ -286,7 +286,7 @@ class LogisticRegression(BaseModel):
         This is an entry point for the Logistic Regression classifier prediction routine.
 
         :param X: Input features for the model.
-        :return: Predicted output values for the input features.
+        :return: Predicted labels and probability values for the input features.
         """
-
-        return self.get_prediction(X, self.weights, self.bias), None
+        y_pred = self.get_prediction(X, self.weights, self.bias)
+        return y_pred >= 0.5, y_pred

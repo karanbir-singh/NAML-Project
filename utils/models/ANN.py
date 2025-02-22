@@ -442,7 +442,7 @@ class ANN(BaseModel):
             return params, history
 
         return callable
-    
+
     def get_prediction(self, X=None, params=None):
         """
         Predicts output values based on the provided input data and model parameters. Applies the defined activation
@@ -505,6 +505,7 @@ class ANN(BaseModel):
         This is an entry point for the ANN model prediction routine.
 
         :param X: Input features for the model.
-        :return: Predicted output values for the input features.
+        :return: Predicted labels and probability values for the input features.
         """
-        return self.get_prediction(X, self.params), None
+        y_train_pred = self.get_prediction(X, self.params)
+        return y_train_pred >= 0.5, y_train_pred
